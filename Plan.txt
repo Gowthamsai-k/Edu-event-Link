@@ -1,0 +1,24 @@
+shall contain two kinds of users
+1 Student 
+2 Admin 
+
+Admin controls 
+
+Shall be able to manage / add events 
+Manage the visibility of events ( for all , particular section , particular group ) 
+
+Student Controls:
+
+shall be able to view new announcements / events 
+shall be able to view and post in student community 
+
+student community contains:
+student blogs 
+student social media posts
+students can have a market to sell their business 
+newsletters 
+acheivments to showcase 
+
+Constraints 
+1 student community shall be monitored using ai to report the user to the admin for any in-disciplanry action like abuse bullying 
+
