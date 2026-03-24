@@ -1,23 +1,47 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, MessageSquare, ShieldCheck, Zap, Plus, Search, Heart, Share2, BookOpen, Clock } from 'lucide-react';
+import { Users, MessageSquare, ShieldCheck, Zap, Plus, Search, Heart, Share2, BookOpen, Clock, ArrowRight, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Community = () => {
-    const { user } = useAuth();
+    const { user, authFetch } = useAuth();
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('feed');
-    const [isCreating, setIsCreating] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [feedItems, setFeedItems] = useState([]);
+    const [blogs, setBlogs] = useState([]);
+    const [showCreatePopup, setShowCreatePopup] = useState(false);
 
-    const feedItems = [
-        { id: 1, user: 'StudentHub', content: 'Anyone joining the AI Workshop tomorrow? Let\'s form a study group!', likes: 12, comments: 4, time: '2h ago' },
-        { id: 2, user: 'MusicSociety', content: 'Auditions for the Spring Band are open now! Link in bio.', likes: 45, comments: 18, time: '5h ago' },
-        { id: 3, user: 'TechWizard', content: 'Just finished a tutorial on React transitions. Check it out on my blog below.', likes: 23, comments: 2, time: '1d ago' },
-    ];
+    // Fetch dynamic data from the backend
+    React.useEffect(() => {
+        const fetchCommunityData = async () => {
+            setLoading(true);
+            try {
+                // Fetch Feed Items
+                const feedRes = await authFetch('/api/posts');
+                if (feedRes.ok) {
+                    const feedData = await feedRes.json();
+                    setFeedItems(feedData);
+                }
 
-    const blogs = [
-        { title: 'Modern React Architecture', author: 'CodeNinja #4210', readTime: '8 min', excerpt: 'How to structure your frontend for scale and maintainability...', date: 'Feb 24' },
-        { title: 'Campus Survival Guide', author: 'LibraryHermit #1102', readTime: '5 min', excerpt: 'Finding the best spots to study and the cheapest coffee...', date: 'Feb 22' },
-    ];
+                // Fetch Blogs
+                const blogsRes = await authFetch('/api/blogs');
+                if (blogsRes.ok) {
+                    const blogsData = await blogsRes.json();
+                    setBlogs(blogsData);
+                }
+            } catch (err) {
+                console.error('Error fetching community data:', err);
+                setError('Failed to sync with the campus network.');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchCommunityData();
+    }, [authFetch]);
 
     return (
         <div className="section-padding" style={{ background: 'white', minHeight: '100vh' }}>
@@ -30,10 +54,10 @@ const Community = () => {
                         <p style={{ color: 'var(--muted-fg)', fontWeight: 'bold', marginTop: '0.5rem' }}>Welcome back, <span style={{ color: 'var(--fg)' }}>{user?.name}</span></p>
                     </div>
                     <button
-                        onClick={() => setIsCreating(true)}
-                        className="btn btn-primary"
+                        onClick={() => setShowCreatePopup(true)}
+                        className="btn-style702"
                     >
-                        Create Community <Plus size={18} />
+                        Create <Plus size={18} />
                     </button>
                 </div>
 
@@ -65,7 +89,20 @@ const Community = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '4rem' }}>
                     {/* Main Content Area */}
                     <main>
-                        {activeTab === 'feed' && (
+                        {loading && (
+                            <div style={{ padding: '4rem', textAlign: 'center' }}>
+                                <div className="animate-spin" style={{ display: 'inline-block' }}><Plus size={40} color="var(--primary)" /></div>
+                                <p style={{ fontWeight: '800', textTransform: 'uppercase', marginTop: '1rem' }}>Synchronizing...</p>
+                            </div>
+                        )}
+
+                        {error && (
+                            <div style={{ padding: '2rem', background: '#fee2e2', border: '1px solid #ef4444', color: '#b91c1c', fontWeight: 'bold', marginBottom: '2rem' }}>
+                                {error}
+                            </div>
+                        )}
+
+                        {!loading && !error && activeTab === 'feed' && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                 {feedItems.map(post => (
                                     <div key={post.id} className="modular-card" style={{ padding: '2rem' }}>
@@ -87,10 +124,16 @@ const Community = () => {
                                         </div>
                                     </div>
                                 ))}
+                                {feedItems.length === 0 && (
+                                    <div style={{ padding: '4rem', textAlign: 'center', border: '1px dashed var(--border)' }}>
+                                        <MessageSquare size={40} color="var(--muted-fg)" style={{ marginBottom: '1rem' }} />
+                                        <p style={{ fontWeight: '800', color: 'var(--muted-fg)' }}>No activity found in the current sector.</p>
+                                    </div>
+                                )}
                             </div>
                         )}
 
-                        {activeTab === 'blogs' && (
+                        {!loading && !error && activeTab === 'blogs' && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                                 {blogs.map((blog, idx) => (
                                     <div key={idx} style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '2rem', borderBottom: '1px solid var(--border)', paddingBottom: '2rem' }}>
@@ -108,6 +151,12 @@ const Community = () => {
                                         </div>
                                     </div>
                                 ))}
+                                {blogs.length === 0 && (
+                                    <div style={{ padding: '4rem', textAlign: 'center', border: '1px dashed var(--border)' }}>
+                                        <BookOpen size={40} color="var(--muted-fg)" style={{ marginBottom: '1rem' }} />
+                                        <p style={{ fontWeight: '800', color: 'var(--muted-fg)' }}>Library database is currently empty.</p>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </main>
@@ -139,26 +188,65 @@ const Community = () => {
                 </div>
             </div>
 
-            {/* Create Community Modal Mockup */}
-            {isCreating && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-                    <div className="modular-card" style={{ maxWidth: '500px', width: '100%', padding: '3rem' }}>
-                        <h2 style={{ textTransform: 'uppercase', marginBottom: '2rem' }}>Initialize New Group</h2>
-                        <div style={{ marginBottom: '1.5rem' }}>
-                            <label style={{ display: 'block', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: '800', marginBottom: '0.5rem' }}>Community Name</label>
-                            <input type="text" placeholder="e.g. KLH Photography" style={{ width: '100%', padding: '0.85rem', border: '1px solid var(--border-strong)', outline: 'none' }} />
-                        </div>
-                        <div style={{ marginBottom: '2rem' }}>
-                            <label style={{ display: 'block', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: '800', marginBottom: '0.5rem' }}>Description</label>
-                            <textarea rows={4} placeholder="Describe the purpose of this group..." style={{ width: '100%', padding: '0.85rem', border: '1px solid var(--border-strong)', outline: 'none', resize: 'none' }} />
-                        </div>
-                        <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button onClick={() => setIsCreating(false)} className="btn btn-primary" style={{ flex: 1 }}>Launch</button>
-                            <button onClick={() => setIsCreating(false)} className="btn btn-outline" style={{ flex: 1 }}>Cancel</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Creation Selection Popup */}
+            <AnimatePresence>
+                {showCreatePopup && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}
+                        onClick={() => setShowCreatePopup(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.9, y: 20 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="modular-card"
+                            style={{ maxWidth: '600px', width: '90%', padding: '0', overflow: 'hidden', border: 'none' }}
+                        >
+                            <div style={{ padding: '2rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h3 style={{ textTransform: 'uppercase', fontWeight: '800' }}>Command / Create</h3>
+                                <button onClick={() => setShowCreatePopup(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-fg)' }}>
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {[
+                                    { title: 'New Post', desc: 'Share an update or question.', icon: <MessageSquare size={24} />, color: 'var(--fg)' },
+                                    { title: 'Start Community', desc: 'Initialize new interactive hub.', icon: <Users size={24} />, color: 'var(--primary)' },
+                                    { title: 'Draft Blog', desc: 'Publish insights to library.', icon: <BookOpen size={24} />, color: '#716eef' }
+                                ].map((opt, i) => (
+                                    <div
+                                        key={i}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            padding: '1.5rem',
+                                            border: '1px solid var(--border)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.borderColor = opt.color}
+                                        onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+                                    >
+                                        <div style={{ width: '48px', height: '48px', background: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '1.5rem' }}>
+                                            {React.cloneElement(opt.icon, { color: opt.color })}
+                                        </div>
+                                        <div>
+                                            <h4 style={{ textTransform: 'uppercase', fontSize: '1rem', fontWeight: '800' }}>{opt.title}</h4>
+                                            <p style={{ fontSize: '0.85rem', color: 'var(--muted-fg)', fontWeight: '600' }}>{opt.desc}</p>
+                                        </div>
+                                        <ArrowRight size={20} style={{ marginLeft: 'auto', color: 'var(--muted-fg)' }} />
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
