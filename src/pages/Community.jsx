@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, MessageSquare, ShieldCheck, Zap, Plus, Search, Heart, Share2, BookOpen, Clock, ArrowRight, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import BlogEditor from '../components/BlogEditor';
 
 const Community = () => {
     const { user, authFetch } = useAuth();
@@ -13,35 +14,36 @@ const Community = () => {
     const [feedItems, setFeedItems] = useState([]);
     const [blogs, setBlogs] = useState([]);
     const [showCreatePopup, setShowCreatePopup] = useState(false);
+    const [createType, setCreateType] = useState(null); // 'post', 'blog', 'community'
 
     // Fetch dynamic data from the backend
-    React.useEffect(() => {
-        const fetchCommunityData = async () => {
-            setLoading(true);
-            try {
-                // Fetch Feed Items
-                const feedRes = await authFetch('/api/posts');
-                if (feedRes.ok) {
-                    const feedData = await feedRes.json();
-                    setFeedItems(feedData);
-                }
-
-                // Fetch Blogs
-                const blogsRes = await authFetch('/api/blogs');
-                if (blogsRes.ok) {
-                    const blogsData = await blogsRes.json();
-                    setBlogs(blogsData);
-                }
-            } catch (err) {
-                console.error('Error fetching community data:', err);
-                setError('Failed to sync with the campus network.');
-            } finally {
-                setLoading(false);
+    const fetchCommunityData = useCallback(async () => {
+        setLoading(true);
+        try {
+            // Fetch Feed Items
+            const feedRes = await authFetch('/api/posts');
+            if (feedRes.ok) {
+                const feedData = await feedRes.json();
+                setFeedItems(feedData);
             }
-        };
 
-        fetchCommunityData();
+            // Fetch Blogs
+            const blogsRes = await authFetch('/api/blogs');
+            if (blogsRes.ok) {
+                const blogsData = await blogsRes.json();
+                setBlogs(blogsData);
+            }
+        } catch (err) {
+            console.error('Error fetching community data:', err);
+            setError('Failed to sync with the campus network.');
+        } finally {
+            setLoading(false);
+        }
     }, [authFetch]);
+
+    useEffect(() => {
+        fetchCommunityData();
+    }, [fetchCommunityData]);
 
     return (
         <div className="section-padding" style={{ background: 'white', minHeight: '100vh' }}>
@@ -196,7 +198,10 @@ const Community = () => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}
-                        onClick={() => setShowCreatePopup(false)}
+                        onClick={() => {
+                            setShowCreatePopup(false);
+                            setCreateType(null);
+                        }}
                     >
                         <motion.div
                             initial={{ scale: 0.9, y: 20 }}
@@ -204,45 +209,73 @@ const Community = () => {
                             exit={{ scale: 0.9, y: 20 }}
                             onClick={(e) => e.stopPropagation()}
                             className="modular-card"
-                            style={{ maxWidth: '600px', width: '90%', padding: '0', overflow: 'hidden', border: 'none' }}
+                            style={{ maxWidth: createType === 'blog' ? '800px' : '600px', width: '90%', padding: '0', overflow: 'hidden', border: 'none' }}
                         >
-                            <div style={{ padding: '2rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <h3 style={{ textTransform: 'uppercase', fontWeight: '800' }}>Command / Create</h3>
-                                <button onClick={() => setShowCreatePopup(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-fg)' }}>
-                                    <X size={24} />
-                                </button>
-                            </div>
-
-                            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                {[
-                                    { title: 'New Post', desc: 'Share an update or question.', icon: <MessageSquare size={24} />, color: 'var(--fg)' },
-                                    { title: 'Start Community', desc: 'Initialize new interactive hub.', icon: <Users size={24} />, color: 'var(--primary)' },
-                                    { title: 'Draft Blog', desc: 'Publish insights to library.', icon: <BookOpen size={24} />, color: '#716eef' }
-                                ].map((opt, i) => (
-                                    <div
-                                        key={i}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            padding: '1.5rem',
-                                            border: '1px solid var(--border)',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s ease',
-                                        }}
-                                        onMouseEnter={(e) => e.currentTarget.style.borderColor = opt.color}
-                                        onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+                            <AnimatePresence mode="wait">
+                                {createType === 'blog' ? (
+                                    <motion.div
+                                        key="blog-editor"
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: -20 }}
                                     >
-                                        <div style={{ width: '48px', height: '48px', background: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '1.5rem' }}>
-                                            {React.cloneElement(opt.icon, { color: opt.color })}
+                                        <BlogEditor
+                                            onClose={() => {
+                                                setShowCreatePopup(false);
+                                                setCreateType(null);
+                                            }}
+                                            onSuccess={() => fetchCommunityData()}
+                                            authFetch={authFetch}
+                                        />
+                                    </motion.div>
+                                ) : (
+                                    <motion.div
+                                        key="type-selector"
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: 20 }}
+                                    >
+                                        <div style={{ padding: '2rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <h3 style={{ textTransform: 'uppercase', fontWeight: '800' }}>Command / Create</h3>
+                                            <button onClick={() => setShowCreatePopup(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted-fg)' }}>
+                                                <X size={24} />
+                                            </button>
                                         </div>
-                                        <div>
-                                            <h4 style={{ textTransform: 'uppercase', fontSize: '1rem', fontWeight: '800' }}>{opt.title}</h4>
-                                            <p style={{ fontSize: '0.85rem', color: 'var(--muted-fg)', fontWeight: '600' }}>{opt.desc}</p>
+
+                                        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                            {[
+                                                { id: 'post', title: 'New Post', desc: 'Share an update or question.', icon: <MessageSquare size={24} />, color: 'var(--fg)' },
+                                                { id: 'community', title: 'Start Community', desc: 'Initialize new interactive hub.', icon: <Users size={24} />, color: 'var(--primary)' },
+                                                { id: 'blog', title: 'Draft Blog', desc: 'Publish insights to library.', icon: <BookOpen size={24} />, color: '#716eef' }
+                                            ].map((opt, i) => (
+                                                <div
+                                                    key={i}
+                                                    onClick={() => setCreateType(opt.id)}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        padding: '1.5rem',
+                                                        border: '1px solid var(--border)',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s ease',
+                                                    }}
+                                                    onMouseEnter={(e) => e.currentTarget.style.borderColor = opt.color}
+                                                    onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border)'}
+                                                >
+                                                    <div style={{ width: '48px', height: '48px', background: 'var(--muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '1.5rem' }}>
+                                                        {React.cloneElement(opt.icon, { color: opt.color })}
+                                                    </div>
+                                                    <div>
+                                                        <h4 style={{ textTransform: 'uppercase', fontSize: '1rem', fontWeight: '800' }}>{opt.title}</h4>
+                                                        <p style={{ fontSize: '0.85rem', color: 'var(--muted-fg)', fontWeight: '600' }}>{opt.desc}</p>
+                                                    </div>
+                                                    <ArrowRight size={20} style={{ marginLeft: 'auto', color: 'var(--muted-fg)' }} />
+                                                </div>
+                                            ))}
                                         </div>
-                                        <ArrowRight size={20} style={{ marginLeft: 'auto', color: 'var(--muted-fg)' }} />
-                                    </div>
-                                ))}
-                            </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </motion.div>
                     </motion.div>
                 )}
