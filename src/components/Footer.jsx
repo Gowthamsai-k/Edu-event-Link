@@ -55,16 +55,7 @@ const Footer = () => {
                         </ul>
                     </div>
 
-                    {/* Resources */}
-                    <div>
-                        <h4 style={{ textTransform: 'uppercase', fontSize: '0.9rem', marginBottom: '1.5rem', letterSpacing: '0.1em' }}>Resources</h4>
-                        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <li><a href="#" style={{ color: 'var(--muted-fg)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>Help Center <ExternalLink size={14} /></a></li>
-                            <li><a href="#" style={{ color: 'var(--muted-fg)', fontWeight: '600' }}>Privacy Policy</a></li>
-                            <li><a href="#" style={{ color: 'var(--muted-fg)', fontWeight: '600' }}>Terms of Service</a></li>
-                            <li><a href="mailto:support@edueventlink.edu" style={{ color: 'var(--muted-fg)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>Contact Us <Mail size={14} /></a></li>
-                        </ul>
-                    </div>
+
                 </div>
 
                 {/* Bottom Bar */}
